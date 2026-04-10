@@ -1,6 +1,5 @@
 """Tests for finlit.schema — Schema and Field dataclasses and YAML loading."""
 from pathlib import Path
-import pytest
 
 from finlit.schema import Schema, Field
 
