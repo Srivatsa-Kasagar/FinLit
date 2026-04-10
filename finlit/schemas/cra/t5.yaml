@@ -9,7 +9,11 @@ fields:
   - name: payer_name
     dtype: str
     required: true
-    description: "Name of the financial institution issuing the T5"
+    description: >
+      Name of the financial institution or corporation issuing the T5.
+      This is the payer, not the recipient — typically a bank, brokerage,
+      credit union, mutual fund company, or corporation (e.g. TD Direct
+      Investing, Questrade, Wealthsimple). Never a person's name.
 
   - name: recipient_sin
     dtype: str
@@ -23,37 +27,60 @@ fields:
     required: true
     description: "Tax year the T5 covers"
 
-  - name: box_10_actual_amount_of_eligible_dividends
+  - name: box_10_actual_amount_dividends_other_than_eligible
     dtype: float
     required: false
-    description: "Box 10: Actual amount of eligible dividends"
+    description: >
+      Box 10: Actual amount of dividends other than eligible dividends
+      (non-eligible / ordinary dividends paid by CCPCs). Gross-up factor
+      is 1.15 — Box 11 should equal Box 10 × 1.15.
 
-  - name: box_11_taxable_amount_of_eligible_dividends
+  - name: box_11_taxable_amount_dividends_other_than_eligible
     dtype: float
     required: false
-    description: "Box 11: Taxable amount of eligible dividends (138% of box 10)"
+    description: >
+      Box 11: Taxable amount of dividends other than eligible dividends
+      (Box 10 × 1.15).
 
-  - name: box_12_dividend_tax_credit_eligible
+  - name: box_12_dividend_tax_credit_other_than_eligible
     dtype: float
     required: false
-    description: "Box 12: Dividend tax credit for eligible dividends"
+    description: >
+      Box 12: Dividend tax credit for dividends other than eligible
+      dividends.
 
   - name: box_13_interest_from_canadian_sources
     dtype: float
     required: false
-    description: "Box 13: Interest from Canadian sources"
+    description: >
+      Box 13: Interest from Canadian sources (bonds, GICs, savings
+      accounts). Not dividends.
 
   - name: box_14_other_income_from_canadian_sources
     dtype: float
     required: false
     description: "Box 14: Other income from Canadian sources"
 
-  - name: box_24_actual_amount_of_ordinary_dividends
+  - name: box_18_capital_gains_dividends
     dtype: float
     required: false
-    description: "Box 24: Actual amount of ordinary dividends"
+    description: "Box 18: Capital gains dividends"
 
-  - name: box_25_taxable_amount_ordinary_dividends
+  - name: box_24_actual_amount_of_eligible_dividends
     dtype: float
     required: false
-    description: "Box 25: Taxable amount of ordinary dividends (115% of box 24)"
+    description: >
+      Box 24: Actual amount of eligible dividends (typically paid by
+      public Canadian corporations). Gross-up factor is 1.38 —
+      Box 25 should equal Box 24 × 1.38.
+
+  - name: box_25_taxable_amount_of_eligible_dividends
+    dtype: float
+    required: false
+    description: >
+      Box 25: Taxable amount of eligible dividends (Box 24 × 1.38).
+
+  - name: box_26_dividend_tax_credit_eligible
+    dtype: float
+    required: false
+    description: "Box 26: Dividend tax credit for eligible dividends"
