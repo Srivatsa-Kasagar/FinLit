@@ -14,6 +14,19 @@ from presidio_analyzer import AnalyzerEngine, Pattern, PatternRecognizer
 from presidio_anonymizer import AnonymizerEngine
 from presidio_anonymizer.entities import OperatorConfig
 
+# US-only Presidio recognizers that are pure noise on Canadian documents.
+# US_DRIVER_LICENSE in particular fires on the literal string "T4" on
+# every CRA T4 slip, and US_SSN / US_ITIN double-count with CA_SIN.
+_CA_DEFAULT_EXCLUDED_ENTITIES: frozenset[str] = frozenset(
+    {
+        "US_SSN",
+        "US_ITIN",
+        "US_DRIVER_LICENSE",
+        "US_PASSPORT",
+        "US_BANK_NUMBER",
+    }
+)
+
 
 @dataclass
 class PIIResult:
@@ -57,7 +70,31 @@ class CanadianPIIDetector:
         self._analyzer.registry.add_recognizer(postal)
         self._analyzer.registry.add_recognizer(cra_bn)
 
-    def analyze(self, text: str, language: str = "en") -> list[dict]:
+    def analyze(
+        self,
+        text: str,
+        language: str = "en",
+        exclude_entities: set[str] | frozenset[str] | None = None,
+    ) -> list[dict]:
+        """Run Presidio analysis against ``text``.
+
+        Parameters
+        ----------
+        text:
+            The raw text to scan for PII.
+        language:
+            Presidio language code, default ``"en"``.
+        exclude_entities:
+            Entity types to drop from the result. Defaults to a frozen set
+            of US-only recognizers that produce noise on Canadian documents
+            (``US_SSN``, ``US_DRIVER_LICENSE``, etc.). Pass an empty set to
+            get Presidio's raw output with no filtering.
+        """
+        excluded = (
+            _CA_DEFAULT_EXCLUDED_ENTITIES
+            if exclude_entities is None
+            else exclude_entities
+        )
         results = self._analyzer.analyze(text=text, language=language)
         return [
             {
@@ -68,6 +105,7 @@ class CanadianPIIDetector:
                 "text": text[r.start:r.end],
             }
             for r in results
+            if r.entity_type not in excluded
         ]
 
     def redact(self, text: str, language: str = "en") -> PIIResult:
