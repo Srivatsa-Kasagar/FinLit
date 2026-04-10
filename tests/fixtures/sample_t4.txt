@@ -1,0 +1,21 @@
+T4 — Statement of Remuneration Paid
+Year: 2024
+
+Employer's name: Acme Corp
+Employer BN: 123456789 RT0001
+Province of employment: ON
+
+Employee:
+  Name: Alice Example
+  SIN: 123-456-789
+  Address: 100 King St W, Toronto, ON M5V 3A8
+
+Box 14 - Employment income:            87500.00
+Box 16 - Employee's CPP contributions:  3867.50
+Box 18 - Employee's EI premiums:        1049.12
+Box 22 - Income tax deducted:          15200.00
+Box 24 - EI insurable earnings:        61500.00
+Box 26 - CPP pensionable earnings:     68500.00
+Box 44 - Union dues:                       0.00
+Box 46 - Charitable donations:           250.00
+Box 52 - Pension adjustment:               0.00
