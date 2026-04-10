@@ -181,6 +181,43 @@ def test_sparse_document_warning_when_ocr_also_fails(
     assert "sparse_document_warning" in events
 
 
+def test_required_fields_missing_forces_review(
+    monkeypatch, synthetic_parsed_document, tmp_path
+):
+    """If the extractor returns nothing for required fields (as happens on a
+    blank CRA form), the validator flags required_fields_missing and the
+    pipeline must set needs_review=True even though the text wasn't sparse."""
+    _patch_parser(monkeypatch, synthetic_parsed_document)
+    fake = tmp_path / "blank.pdf"
+    fake.write_bytes(b"x")
+
+    # Stub returns confident-but-None for every required field
+    empty = StubExtractor(
+        fields={
+            "employer_name": None,
+            "employee_sin": None,
+            "tax_year": None,
+            "box_14_employment_income": None,
+            "box_22_income_tax_deducted": None,
+        },
+        confidence={
+            "employer_name": 0.99,
+            "employee_sin": 0.99,
+            "tax_year": 0.99,
+            "box_14_employment_income": 0.99,
+            "box_22_income_tax_deducted": 0.99,
+        },
+    )
+    pipeline = DocumentPipeline(schema=schemas.CRA_T4, extractor=empty)
+    result = pipeline.run(fake)
+
+    warning_codes = {w["code"] for w in result.warnings}
+    assert "required_fields_missing" in warning_codes
+    assert result.needs_review is True
+    events = [e["event"] for e in result.audit_log]
+    assert "required_fields_missing_warning" in events
+
+
 def test_ocr_fallback_disabled_skips_retry(
     monkeypatch, high_confidence_t4_extractor, tmp_path
 ):

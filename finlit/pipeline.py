@@ -153,6 +153,34 @@ class DocumentPipeline:
         if validation_errors:
             audit.log("validation_errors", errors=validation_errors)
 
+        # Step 4b: if any required field is missing, emit a document-level
+        # warning so the caller sees needs_review=True even when the text
+        # wasn't sparse (e.g., a blank fillable CRA form).
+        required_field_names = {
+            f.name for f in self.schema.fields if f.required
+        }
+        missing_required = sorted(
+            fname
+            for fname in required_field_names
+            if validated_fields.get(fname) is None
+        )
+        if missing_required:
+            warnings.append(
+                {
+                    "code": "required_fields_missing",
+                    "message": (
+                        f"{len(missing_required)} required field(s) missing "
+                        f"after extraction: {', '.join(missing_required)}"
+                    ),
+                    "missing_fields": missing_required,
+                }
+            )
+            audit.log(
+                "required_fields_missing_warning",
+                count=len(missing_required),
+                fields=missing_required,
+            )
+
         # Step 5: review queue — only flag fields with a value below threshold
         review_fields = [
             {
