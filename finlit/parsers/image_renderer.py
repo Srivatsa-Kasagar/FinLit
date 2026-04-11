@@ -64,17 +64,28 @@ def render_pages(path: str | Path, dpi: int = 200) -> list[bytes]:
 
 
 def _render_pdf(path: Path, dpi: int) -> list[bytes]:
-    """Render every page of a PDF to PNG bytes at the given DPI."""
+    """Render every page of a PDF to PNG bytes at the given DPI.
+
+    Native ``FPDF_PAGE`` handles are closed eagerly after each page is
+    encoded so memory usage stays flat regardless of page count.
+    """
     scale = dpi / 72.0  # pypdfium2 scale is relative to 72 DPI
     out: list[bytes] = []
     pdf = pdfium.PdfDocument(str(path))
     try:
-        for page in pdf:
-            bitmap = page.render(scale=scale)
-            pil_image: Image.Image = bitmap.to_pil()
-            buf = io.BytesIO()
-            pil_image.save(buf, format="PNG")
-            out.append(buf.getvalue())
+        for i in range(len(pdf)):
+            page = pdf.get_page(i)
+            try:
+                bitmap = page.render(scale=scale)
+                pil_image: Image.Image = bitmap.to_pil()
+                # Force a copy out of pypdfium2's shared buffer so the
+                # PIL image remains valid after the bitmap is freed.
+                pil_image.load()
+                buf = io.BytesIO()
+                pil_image.save(buf, format="PNG")
+                out.append(buf.getvalue())
+            finally:
+                page.close()
     finally:
         pdf.close()
     return out

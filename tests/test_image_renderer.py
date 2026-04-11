@@ -16,10 +16,12 @@ PNG_MAGIC = b"\x89PNG\r\n\x1a\n"
 def _write_blank_pdf(path: Path, num_pages: int = 1) -> None:
     """Generate a tiny blank PDF at `path` using pypdfium2."""
     pdf = pdfium.PdfDocument.new()
-    for _ in range(num_pages):
-        pdf.new_page(612, 792)  # US-letter points
-    pdf.save(str(path))
-    pdf.close()
+    try:
+        for _ in range(num_pages):
+            pdf.new_page(612, 792)  # US-letter points
+        pdf.save(str(path))
+    finally:
+        pdf.close()
 
 
 def test_render_pdf_returns_png_bytes(tmp_path: Path):
@@ -34,14 +36,19 @@ def test_render_pdf_returns_png_bytes(tmp_path: Path):
 
 
 def test_render_respects_dpi(tmp_path: Path):
-    """Higher DPI must produce larger PNG byte output than lower DPI."""
+    """Higher DPI must produce an image with larger pixel dimensions."""
+    import io as _io
+
     pdf_path = tmp_path / "blank.pdf"
     _write_blank_pdf(pdf_path, num_pages=1)
 
     low = render_pages(pdf_path, dpi=72)
     high = render_pages(pdf_path, dpi=200)
 
-    assert len(low[0]) < len(high[0])
+    low_w, low_h = Image.open(_io.BytesIO(low[0])).size
+    high_w, high_h = Image.open(_io.BytesIO(high[0])).size
+    assert high_w > low_w
+    assert high_h > low_h
 
 
 def test_render_multipage_pdf(tmp_path: Path):
