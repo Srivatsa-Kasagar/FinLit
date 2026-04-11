@@ -23,6 +23,15 @@ print(result.confidence["box_14_employment_income"]) # → 0.97
 print(result.needs_review)                           # → False
 ```
 
+**Who this is for:**
+
+- Canadian **fintechs** processing user-uploaded T-slips into structured data
+- **Banks and credit unions** running SEDAR filing and statement pipelines
+- **Accounting and tax software** pre-filling CRA forms from client documents
+- Any team that needs **on-premises** extraction with a **PIPEDA/OSFI-friendly audit trail**
+
+Not a developer? See [docs/use-cases.md](docs/use-cases.md) for business context, compliance framing, and "build vs. buy" math.
+
 ---
 
 ## Contents

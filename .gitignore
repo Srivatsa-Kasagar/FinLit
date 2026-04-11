@@ -13,3 +13,4 @@ build/
 .env
 docs/*
 !docs/superpowers/
+!docs/use-cases.md
