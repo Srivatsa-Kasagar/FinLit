@@ -52,8 +52,6 @@ def test_needs_review_true_when_warning_present():
 def test_extraction_result_default_extraction_path_is_text():
     """By default, ExtractionResult.extraction_path is 'text' for backwards
     compatibility with v0.2.0 consumers."""
-    from finlit.result import ExtractionResult
-
     result = ExtractionResult(fields={}, confidence={}, source_ref={})
     assert result.extraction_path == "text"
 
@@ -61,8 +59,6 @@ def test_extraction_result_default_extraction_path_is_text():
 def test_extraction_result_extraction_path_can_be_vision():
     """extraction_path can be explicitly set to 'vision' when the vision
     fallback produced the result."""
-    from finlit.result import ExtractionResult
-
     result = ExtractionResult(
         fields={}, confidence={}, source_ref={}, extraction_path="vision"
     )
