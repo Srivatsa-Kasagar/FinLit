@@ -1,6 +1,8 @@
 """Tests for finlit.integrations.langchain.FinLitLoader."""
 from __future__ import annotations
 
+import inspect
+
 
 def test_single_file_load_returns_one_document(
     t4_pipeline, patch_docling_parser, fake_t4_pdf
@@ -56,3 +58,32 @@ def test_metadata_contract_snapshot(
     assert doc.metadata["finlit_needs_review"] is False
     assert isinstance(doc.metadata["finlit_fields"], dict)
     assert isinstance(doc.metadata["finlit_confidence"], dict)
+
+
+def test_list_of_paths_preserves_order(
+    t4_pipeline, patch_docling_parser, tmp_path
+):
+    from finlit.integrations.langchain import FinLitLoader
+
+    p1 = tmp_path / "a.pdf"; p1.write_bytes(b"x")
+    p2 = tmp_path / "b.pdf"; p2.write_bytes(b"x")
+    p3 = tmp_path / "c.pdf"; p3.write_bytes(b"x")
+
+    loader = FinLitLoader([p1, p2, p3], pipeline=t4_pipeline)
+    docs = loader.load()
+
+    assert [d.metadata["source"] for d in docs] == [str(p1), str(p2), str(p3)]
+
+
+def test_lazy_load_is_a_generator(
+    t4_pipeline, patch_docling_parser, fake_t4_pdf
+):
+    from finlit.integrations.langchain import FinLitLoader
+
+    loader = FinLitLoader(fake_t4_pdf, pipeline=t4_pipeline)
+    iterator = loader.lazy_load()
+
+    assert inspect.isgenerator(iterator)
+    # Pulling one item must not require iterating the whole list
+    first = next(iterator)
+    assert first.metadata["source"] == str(fake_t4_pdf)
