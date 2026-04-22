@@ -279,3 +279,24 @@ def test_last_results_resets_on_each_load(
     loader.load()
     loader.load()  # second call
     assert len(loader.last_results) == 1  # not 2
+
+
+def test_import_without_langchain_core_raises_helpful_error(monkeypatch):
+    """If langchain-core is not installed, importing the integration
+    module should raise ImportError with an install hint — not a cryptic
+    ModuleNotFoundError from deep inside the loader."""
+    import sys
+
+    # Force both import caches and both find_module attempts to behave
+    # as if langchain-core is absent.
+    monkeypatch.setitem(sys.modules, "langchain_core", None)
+    monkeypatch.setitem(sys.modules, "langchain_core.document_loaders", None)
+    monkeypatch.setitem(sys.modules, "langchain_core.documents", None)
+
+    # Also purge any already-loaded copies of our module so the import
+    # re-runs.
+    sys.modules.pop("finlit.integrations.langchain", None)
+    sys.modules.pop("finlit.integrations.langchain.loader", None)
+
+    with pytest.raises(ImportError, match=r"pip install finlit\[langchain\]"):
+        import finlit.integrations.langchain  # noqa: F401
