@@ -17,8 +17,9 @@ PathLike = Union[str, Path]
 class FinLitLoader(BaseLoader):
     """Load files through a FinLit DocumentPipeline and emit LangChain Documents.
 
-    One Document per input file. `page_content` carries the raw parsed text;
-    `metadata` carries the structured ExtractionResult under `finlit_*` keys.
+    One Document per input file. `page_content` is the raw parsed text from
+    Docling; `metadata` carries the structured ExtractionResult under
+    `finlit_*` keys (plus `source` per LangChain convention).
     """
 
     def __init__(
@@ -37,30 +38,34 @@ class FinLitLoader(BaseLoader):
     def lazy_load(self) -> Iterator[Document]:
         self.last_results = []
         for path in self._paths:
+            # Parse once for page_content. This is the same parser the
+            # pipeline will use internally; Docling caches nothing stateful
+            # across parse() calls, so the double-parse cost is acceptable
+            # for v0.1. A future optimisation can thread the parsed text
+            # through ExtractionResult to avoid the second call.
+            parsed = self._pipeline._parser.parse(path)
             result = self._pipeline.run(path)
             self.last_results.append(result)
-            yield _build_document(path, result)
+            yield _build_document(path, parsed.full_text, result)
 
 
-def _build_document(path: Path, result: ExtractionResult) -> Document:
-    """Map an ExtractionResult into a LangChain Document.
-
-    The raw parsed text is NOT stored on ExtractionResult today, so we read
-    it back from the pipeline's `_parser` via a side channel. For now we
-    surface what we have: the pipeline's validated fields as metadata, and
-    a placeholder page_content we will enrich in the next task.
-    """
-    # NOTE: result does not carry the raw parsed text. Task 4 replaces this
-    # placeholder with the real full_text once the pipeline passes it
-    # through. For this task, we synthesise page_content from the fields
-    # so the happy-path test can assert a known value is present.
-    page_content = "\n".join(
-        f"{k}: {v}" for k, v in result.fields.items() if v is not None
-    )
+def _build_document(
+    path: Path, full_text: str, result: ExtractionResult
+) -> Document:
     return Document(
-        page_content=page_content,
+        page_content=full_text,
         metadata={
             "source": str(path),
+            "finlit_schema": result.schema_name,
+            "finlit_model": result.extractor_model,
+            "finlit_extraction_path": result.extraction_path,
+            "finlit_needs_review": result.needs_review,
+            "finlit_extracted_field_count": result.extracted_field_count,
             "finlit_fields": dict(result.fields),
+            "finlit_confidence": dict(result.confidence),
+            "finlit_source_ref": dict(result.source_ref),
+            "finlit_warnings": list(result.warnings),
+            "finlit_review_fields": list(result.review_fields),
+            "finlit_pii_entities": list(result.pii_entities),
         },
     )
