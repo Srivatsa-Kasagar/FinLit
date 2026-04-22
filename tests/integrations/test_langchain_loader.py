@@ -87,3 +87,20 @@ def test_lazy_load_is_a_generator(
     # Pulling one item must not require iterating the whole list
     first = next(iterator)
     assert first.metadata["source"] == str(fake_t4_pdf)
+
+
+def test_loader_accepts_schema_kwarg(
+    patch_docling_parser, high_confidence_t4_extractor, fake_t4_pdf
+):
+    """When schema is passed (and pipeline is not), the loader builds
+    its own DocumentPipeline internally and uses it."""
+    from finlit.integrations.langchain import FinLitLoader
+
+    loader = FinLitLoader(
+        fake_t4_pdf,
+        schema="cra.t4",
+        extractor=high_confidence_t4_extractor,
+    )
+    docs = loader.load()
+    assert docs[0].metadata["finlit_schema"] == "cra_t4"
+    assert docs[0].metadata["finlit_fields"]["employer_name"] == "Acme Corp"

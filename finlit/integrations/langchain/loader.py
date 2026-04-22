@@ -7,8 +7,11 @@ from typing import Iterator, Union
 from langchain_core.document_loaders import BaseLoader
 from langchain_core.documents import Document
 
+from finlit.extractors.base import BaseExtractor
+from finlit.integrations._schema_resolver import _resolve_schema
 from finlit.pipeline import DocumentPipeline
 from finlit.result import ExtractionResult
+from finlit.schema import Schema
 
 
 PathLike = Union[str, Path]
@@ -20,29 +23,44 @@ class FinLitLoader(BaseLoader):
     One Document per input file. `page_content` is the raw parsed text from
     Docling; `metadata` carries the structured ExtractionResult under
     `finlit_*` keys (plus `source` per LangChain convention).
+
+    Construction:
+        FinLitLoader(path, schema="cra.t4")                 # build pipeline
+        FinLitLoader(path, schema=my_schema)                # Schema instance
+        FinLitLoader(path, pipeline=my_pipeline)            # inject pipeline
+        FinLitLoader(path, pipeline=p, schema="cra.t4")     # pipeline wins
     """
 
     def __init__(
         self,
         file_path: PathLike | list[PathLike],
         *,
-        pipeline: DocumentPipeline,
+        schema: Schema | str | None = None,
+        extractor: str | BaseExtractor = "claude",
+        pipeline: DocumentPipeline | None = None,
     ) -> None:
         if isinstance(file_path, (str, Path)):
             self._paths: list[Path] = [Path(file_path)]
         else:
             self._paths = [Path(p) for p in file_path]
-        self._pipeline = pipeline
+
+        if pipeline is not None:
+            self._pipeline = pipeline
+        elif schema is not None:
+            self._pipeline = DocumentPipeline(
+                schema=_resolve_schema(schema),
+                extractor=extractor,
+            )
+        else:
+            raise ValueError(
+                "FinLitLoader requires either schema=... or pipeline=..."
+            )
+
         self.last_results: list[ExtractionResult | None] = []
 
     def lazy_load(self) -> Iterator[Document]:
         self.last_results = []
         for path in self._paths:
-            # Parse once for page_content. This is the same parser the
-            # pipeline will use internally; Docling caches nothing stateful
-            # across parse() calls, so the double-parse cost is acceptable
-            # for v0.1. A future optimisation can thread the parsed text
-            # through ExtractionResult to avoid the second call.
             parsed = self._pipeline._parser.parse(path)
             result = self._pipeline.run(path)
             self.last_results.append(result)
