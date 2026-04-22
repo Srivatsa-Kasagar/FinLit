@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import inspect
+import pytest
 
 
 def test_single_file_load_returns_one_document(
@@ -104,3 +105,26 @@ def test_loader_accepts_schema_kwarg(
     docs = loader.load()
     assert docs[0].metadata["finlit_schema"] == "cra_t4"
     assert docs[0].metadata["finlit_fields"]["employer_name"] == "Acme Corp"
+
+
+def test_pipeline_wins_over_schema_kwarg(
+    t4_pipeline, patch_docling_parser, fake_t4_pdf
+):
+    """When both pipeline and schema are passed, pipeline wins. Prove by
+    passing a schema key that would fail to resolve if it were consulted."""
+    from finlit.integrations.langchain import FinLitLoader
+
+    loader = FinLitLoader(
+        fake_t4_pdf,
+        pipeline=t4_pipeline,
+        schema="intentionally.broken.key",   # would raise if resolved
+    )
+    docs = loader.load()  # but pipeline wins, so no resolution happens
+    assert len(docs) == 1
+
+
+def test_missing_schema_and_pipeline_raises_at_init(fake_t4_pdf):
+    from finlit.integrations.langchain import FinLitLoader
+
+    with pytest.raises(ValueError, match="schema=... or pipeline=..."):
+        FinLitLoader(fake_t4_pdf)
