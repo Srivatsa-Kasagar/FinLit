@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import inspect
+from pathlib import Path
+
 import pytest
 
 
@@ -128,3 +130,56 @@ def test_missing_schema_and_pipeline_raises_at_init(fake_t4_pdf):
 
     with pytest.raises(ValueError, match="schema=... or pipeline=..."):
         FinLitLoader(fake_t4_pdf)
+
+
+def test_on_error_raise_aborts_iteration(
+    t4_pipeline, patch_docling_parser, tmp_path, monkeypatch
+):
+    """Default on_error='raise' re-raises and aborts the remaining files."""
+    from finlit.integrations.langchain import FinLitLoader
+
+    p1 = tmp_path / "ok1.pdf"; p1.write_bytes(b"x")
+    p2 = tmp_path / "boom.pdf"; p2.write_bytes(b"x")
+    p3 = tmp_path / "ok2.pdf"; p3.write_bytes(b"x")
+
+    original_run = t4_pipeline.run
+
+    def _run(path):
+        if Path(path).name == "boom.pdf":
+            raise RuntimeError("kaboom")
+        return original_run(path)
+
+    monkeypatch.setattr(t4_pipeline, "run", _run)
+
+    loader = FinLitLoader([p1, p2, p3], pipeline=t4_pipeline)
+    with pytest.raises(RuntimeError, match="kaboom"):
+        loader.load()
+
+
+def test_on_error_skip_warns_and_continues(
+    t4_pipeline, patch_docling_parser, tmp_path, monkeypatch, caplog
+):
+    """on_error='skip' logs a warning and yields only the good Documents."""
+    from finlit.integrations.langchain import FinLitLoader
+
+    p1 = tmp_path / "ok1.pdf"; p1.write_bytes(b"x")
+    p2 = tmp_path / "boom.pdf"; p2.write_bytes(b"x")
+    p3 = tmp_path / "ok2.pdf"; p3.write_bytes(b"x")
+
+    original_run = t4_pipeline.run
+
+    def _run(path):
+        if Path(path).name == "boom.pdf":
+            raise RuntimeError("kaboom")
+        return original_run(path)
+
+    monkeypatch.setattr(t4_pipeline, "run", _run)
+
+    import logging
+    caplog.set_level(logging.WARNING, logger="finlit.integrations.langchain")
+
+    loader = FinLitLoader([p1, p2, p3], pipeline=t4_pipeline, on_error="skip")
+    docs = loader.load()
+
+    assert [d.metadata["source"] for d in docs] == [str(p1), str(p3)]
+    assert any("boom.pdf" in rec.message for rec in caplog.records)

@@ -1,8 +1,9 @@
 """FinLitLoader — LangChain BaseLoader wrapper around DocumentPipeline."""
 from __future__ import annotations
 
+import logging
 from pathlib import Path
-from typing import Iterator, Union
+from typing import Iterator, Literal, Union
 
 from langchain_core.document_loaders import BaseLoader
 from langchain_core.documents import Document
@@ -14,21 +15,16 @@ from finlit.result import ExtractionResult
 from finlit.schema import Schema
 
 
+_log = logging.getLogger(__name__)
+
 PathLike = Union[str, Path]
+OnError = Literal["raise", "skip", "include"]
 
 
 class FinLitLoader(BaseLoader):
     """Load files through a FinLit DocumentPipeline and emit LangChain Documents.
 
-    One Document per input file. `page_content` is the raw parsed text from
-    Docling; `metadata` carries the structured ExtractionResult under
-    `finlit_*` keys (plus `source` per LangChain convention).
-
-    Construction:
-        FinLitLoader(path, schema="cra.t4")                 # build pipeline
-        FinLitLoader(path, schema=my_schema)                # Schema instance
-        FinLitLoader(path, pipeline=my_pipeline)            # inject pipeline
-        FinLitLoader(path, pipeline=p, schema="cra.t4")     # pipeline wins
+    See design doc: docs/superpowers/specs/2026-04-22-langchain-llamaindex-readers-design.md
     """
 
     def __init__(
@@ -38,6 +34,7 @@ class FinLitLoader(BaseLoader):
         schema: Schema | str | None = None,
         extractor: str | BaseExtractor = "claude",
         pipeline: DocumentPipeline | None = None,
+        on_error: OnError = "raise",
     ) -> None:
         if isinstance(file_path, (str, Path)):
             self._paths: list[Path] = [Path(file_path)]
@@ -56,13 +53,30 @@ class FinLitLoader(BaseLoader):
                 "FinLitLoader requires either schema=... or pipeline=..."
             )
 
+        if on_error not in ("raise", "skip", "include"):
+            raise ValueError(
+                f"on_error must be 'raise', 'skip', or 'include', got {on_error!r}"
+            )
+        self._on_error = on_error
+
         self.last_results: list[ExtractionResult | None] = []
 
     def lazy_load(self) -> Iterator[Document]:
         self.last_results = []
         for path in self._paths:
-            parsed = self._pipeline._parser.parse(path)
-            result = self._pipeline.run(path)
+            try:
+                parsed = self._pipeline._parser.parse(path)
+                result = self._pipeline.run(path)
+            except Exception as exc:
+                if self._on_error == "raise":
+                    raise
+                if self._on_error == "skip":
+                    _log.warning(
+                        "FinLit extraction failed for %s: %s", path, exc
+                    )
+                    continue
+                # "include" handled in Task 9
+                raise  # pragma: no cover
             self.last_results.append(result)
             yield _build_document(path, parsed.full_text, result)
 
