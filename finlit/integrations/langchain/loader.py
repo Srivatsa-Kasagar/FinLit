@@ -75,8 +75,22 @@ class FinLitLoader(BaseLoader):
                         "FinLit extraction failed for %s: %s", path, exc
                     )
                     continue
-                # "include" handled in Task 9
-                raise  # pragma: no cover
+                # on_error == "include"
+                _log.warning(
+                    "FinLit extraction failed for %s (emitted as error Document): %s",
+                    path,
+                    exc,
+                )
+                self.last_results.append(None)
+                yield Document(
+                    page_content="",
+                    metadata={
+                        "source": str(path),
+                        "finlit_error": repr(exc),
+                        "finlit_error_type": type(exc).__name__,
+                    },
+                )
+                continue
             self.last_results.append(result)
             yield _build_document(path, parsed.full_text, result)
 

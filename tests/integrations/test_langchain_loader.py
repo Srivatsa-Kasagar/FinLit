@@ -183,3 +183,33 @@ def test_on_error_skip_warns_and_continues(
 
     assert [d.metadata["source"] for d in docs] == [str(p1), str(p3)]
     assert any("boom.pdf" in rec.message for rec in caplog.records)
+
+
+def test_on_error_include_emits_failure_document(
+    t4_pipeline, patch_docling_parser, tmp_path, monkeypatch
+):
+    """on_error='include' yields a Document with page_content='' and
+    finlit_error / finlit_error_type in metadata."""
+    from finlit.integrations.langchain import FinLitLoader
+
+    p1 = tmp_path / "ok1.pdf"; p1.write_bytes(b"x")
+    p2 = tmp_path / "boom.pdf"; p2.write_bytes(b"x")
+    p3 = tmp_path / "ok2.pdf"; p3.write_bytes(b"x")
+
+    original_run = t4_pipeline.run
+
+    def _run(path):
+        if Path(path).name == "boom.pdf":
+            raise RuntimeError("kaboom")
+        return original_run(path)
+
+    monkeypatch.setattr(t4_pipeline, "run", _run)
+
+    loader = FinLitLoader([p1, p2, p3], pipeline=t4_pipeline, on_error="include")
+    docs = loader.load()
+
+    assert [d.metadata["source"] for d in docs] == [str(p1), str(p2), str(p3)]
+    failure = docs[1]
+    assert failure.page_content == ""
+    assert failure.metadata["finlit_error_type"] == "RuntimeError"
+    assert "kaboom" in failure.metadata["finlit_error"]
