@@ -10,7 +10,6 @@ from pathlib import Path
 import pytest
 
 from finlit import schemas
-from finlit.parsers.docling_parser import ParsedDocument
 from finlit.pipeline import DocumentPipeline
 
 from tests.conftest import StubExtractor  # noqa: F401  (re-exported for tests)

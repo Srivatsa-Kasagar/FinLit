@@ -68,9 +68,12 @@ def test_list_of_paths_preserves_order(
 ):
     from finlit.integrations.langchain import FinLitLoader
 
-    p1 = tmp_path / "a.pdf"; p1.write_bytes(b"x")
-    p2 = tmp_path / "b.pdf"; p2.write_bytes(b"x")
-    p3 = tmp_path / "c.pdf"; p3.write_bytes(b"x")
+    p1 = tmp_path / "a.pdf"
+    p1.write_bytes(b"x")
+    p2 = tmp_path / "b.pdf"
+    p2.write_bytes(b"x")
+    p3 = tmp_path / "c.pdf"
+    p3.write_bytes(b"x")
 
     loader = FinLitLoader([p1, p2, p3], pipeline=t4_pipeline)
     docs = loader.load()
@@ -138,9 +141,12 @@ def test_on_error_raise_aborts_iteration(
     """Default on_error='raise' re-raises and aborts the remaining files."""
     from finlit.integrations.langchain import FinLitLoader
 
-    p1 = tmp_path / "ok1.pdf"; p1.write_bytes(b"x")
-    p2 = tmp_path / "boom.pdf"; p2.write_bytes(b"x")
-    p3 = tmp_path / "ok2.pdf"; p3.write_bytes(b"x")
+    p1 = tmp_path / "ok1.pdf"
+    p1.write_bytes(b"x")
+    p2 = tmp_path / "boom.pdf"
+    p2.write_bytes(b"x")
+    p3 = tmp_path / "ok2.pdf"
+    p3.write_bytes(b"x")
 
     original_run = t4_pipeline.run
 
@@ -162,9 +168,12 @@ def test_on_error_skip_warns_and_continues(
     """on_error='skip' logs a warning and yields only the good Documents."""
     from finlit.integrations.langchain import FinLitLoader
 
-    p1 = tmp_path / "ok1.pdf"; p1.write_bytes(b"x")
-    p2 = tmp_path / "boom.pdf"; p2.write_bytes(b"x")
-    p3 = tmp_path / "ok2.pdf"; p3.write_bytes(b"x")
+    p1 = tmp_path / "ok1.pdf"
+    p1.write_bytes(b"x")
+    p2 = tmp_path / "boom.pdf"
+    p2.write_bytes(b"x")
+    p3 = tmp_path / "ok2.pdf"
+    p3.write_bytes(b"x")
 
     original_run = t4_pipeline.run
 
@@ -192,9 +201,12 @@ def test_on_error_include_emits_failure_document(
     finlit_error / finlit_error_type in metadata."""
     from finlit.integrations.langchain import FinLitLoader
 
-    p1 = tmp_path / "ok1.pdf"; p1.write_bytes(b"x")
-    p2 = tmp_path / "boom.pdf"; p2.write_bytes(b"x")
-    p3 = tmp_path / "ok2.pdf"; p3.write_bytes(b"x")
+    p1 = tmp_path / "ok1.pdf"
+    p1.write_bytes(b"x")
+    p2 = tmp_path / "boom.pdf"
+    p2.write_bytes(b"x")
+    p3 = tmp_path / "ok2.pdf"
+    p3.write_bytes(b"x")
 
     original_run = t4_pipeline.run
 
@@ -248,9 +260,12 @@ def test_last_results_includes_none_for_skipped_failures(
     from finlit.integrations.langchain import FinLitLoader
     from finlit.result import ExtractionResult
 
-    p1 = tmp_path / "ok1.pdf"; p1.write_bytes(b"x")
-    p2 = tmp_path / "boom.pdf"; p2.write_bytes(b"x")
-    p3 = tmp_path / "ok2.pdf"; p3.write_bytes(b"x")
+    p1 = tmp_path / "ok1.pdf"
+    p1.write_bytes(b"x")
+    p2 = tmp_path / "boom.pdf"
+    p2.write_bytes(b"x")
+    p3 = tmp_path / "ok2.pdf"
+    p3.write_bytes(b"x")
 
     original_run = t4_pipeline.run
 
