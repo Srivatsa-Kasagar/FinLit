@@ -9,11 +9,15 @@ The module exposes:
 """
 from __future__ import annotations
 
+import asyncio
+from pathlib import Path
 from typing import Literal
 
 from mcp.server.fastmcp import FastMCP
 
 from finlit.integrations._schema_resolver import _DOTTED_TO_ATTR, _resolve_schema
+from finlit.integrations.mcp.pipeline_cache import get_pipeline
+from finlit.integrations.mcp.responses import build_extraction_response
 
 PIIMode = Literal["redact", "raw"]
 
@@ -46,6 +50,50 @@ def build_app(
                 "description": schema.description,
             })
         return out
+
+    @app.tool()
+    async def extract_document(
+        path: str,
+        schema: str,
+        extractor_override: str | None = None,
+        vision_extractor_override: str | None = None,
+        redact_pii: bool | None = None,
+        include_audit_log: bool = False,
+        include_source_ref: bool = False,
+        include_pii_entities: bool = False,
+    ) -> dict:
+        """Extract structured fields from a single Canadian financial document."""
+        doc_path = Path(path)
+        if not doc_path.exists():
+            raise ValueError(f"path does not exist: {path}")
+
+        chosen_extractor = extractor_override or extractor
+        chosen_vision = (
+            vision_extractor_override
+            if vision_extractor_override is not None
+            else vision_extractor
+        )
+        effective_redact = (
+            redact_pii if redact_pii is not None else server_default_redact
+        )
+
+        pipeline = get_pipeline(
+            chosen_extractor, chosen_vision, schema, review_threshold,
+        )
+
+        # Run the sync pipeline in a thread so the event loop stays responsive.
+        result = await asyncio.to_thread(pipeline.run, doc_path)
+
+        return build_extraction_response(
+            result=result,
+            schema=pipeline.schema,
+            schema_key=schema,
+            document_path=str(doc_path.resolve()),
+            redact=effective_redact,
+            include_audit_log=include_audit_log,
+            include_source_ref=include_source_ref,
+            include_pii_entities=include_pii_entities,
+        )
 
     # Stash config on the app for downstream tools added in later tasks.
     app._finlit_extractor = extractor                # type: ignore[attr-defined]
