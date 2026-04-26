@@ -281,6 +281,57 @@ good = [d for d in docs if not d.metadata.get("finlit_error")]
 Access the underlying `ExtractionResult` objects via `loader.last_results`
 (same order as the input paths, with `None` for skipped/included failures).
 
+### MCP server
+
+Expose FinLit as a Model Context Protocol server so any MCP-compatible host
+(Claude Desktop, Claude Code, Cursor, custom agents) can extract documents
+through tool calls — no Python glue.
+
+Install the extra:
+
+```bash
+pip install finlit[mcp]
+```
+
+Run the server (two equivalent ways):
+
+```bash
+# Human-facing
+finlit mcp serve --extractor claude
+
+# Claude Desktop mcpServers config
+python -m finlit.integrations.mcp
+```
+
+Claude Desktop config example:
+
+```json
+{
+  "mcpServers": {
+    "finlit": {
+      "command": "python",
+      "args": ["-m", "finlit.integrations.mcp"],
+      "env": {
+        "ANTHROPIC_API_KEY": "...",
+        "FINLIT_EXTRACTOR": "claude",
+        "FINLIT_PII_MODE": "redact"
+      }
+    }
+  }
+}
+```
+
+Tools exposed:
+
+- `list_schemas()` — discover the built-in CRA / banking schemas
+- `extract_document(path, schema, ...)` — extract one document
+- `batch_extract(paths, schema, ...)` — extract many in parallel
+- `detect_pii(text, ...)` — standalone Presidio + Canadian recognizers
+
+PII fields (per schema annotation) are redacted in tool responses by
+default — appropriate to the chat-transcript trust model. Pass
+`redact_pii=false` per call, or start with `--pii-mode raw`, to opt out.
+
 ---
 
 ## CLI
@@ -491,7 +542,7 @@ Schema contributions are the most useful PRs this project gets. If you know the 
 - [ ] Accuracy benchmarks per schema
 - [x] LangChain reader integration
 - [ ] LlamaIndex reader integration
-- [ ] MCP tool definitions for agentic workflows
+- [x] MCP tool definitions for agentic workflows
 - [ ] French CRA form support
 
 ---
